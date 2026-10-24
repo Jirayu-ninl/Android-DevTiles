@@ -1,17 +1,20 @@
 package dev.theiceji.debugtoggle
 
 import android.content.Context
+import android.content.pm.PackageManager
 import android.graphics.Point
 import android.hardware.display.DisplayManager
 import android.os.Process
 import android.view.Display
-import kotlin.math.roundToInt
 import org.lsposed.hiddenapibypass.HiddenApiBypass
 
 /**
  * Display size the way Developer options' "Smallest width" sets it: a target smallest width in dp
- * becomes a forced density for the current screen (density = shortest side px × 160 / dp), so one
- * preset gives the same layout class on the Find N6's cover and inner screens.
+ * becomes a forced density for the current screen, density = shortest side px × 160 / dp, both ways
+ * truncated like Settings does (so 412 dp on the Find N6 cover and 813 dp inside are both 442 dpi).
+ *
+ * Android keeps a forced density per physical screen, so on a foldable the cover and inner screens
+ * each keep their own; [Screen] tells them apart and each has its own presets.
  *
  * The density is forced with IWindowManager.setForcedDisplayDensityForUser, which checks
  * WRITE_SECURE_SETTINGS (the one grant the app already needs). Writing Settings.Secure
@@ -21,21 +24,29 @@ import org.lsposed.hiddenapibypass.HiddenApiBypass
  */
 object DisplaySize {
     const val MIN_DP = 320
-    const val MAX_DP = 1200
+    const val MAX_DP = 1400
+
+    /** The physical screen behind the default display, keyed by its panel resolution. */
+    data class Screen(val key: String, val kind: Kind) {
+        enum class Kind { Cover, Inner, Single }
+
+        val label: String get() = when (kind) {
+            Kind.Cover -> "Cover screen"
+            Kind.Inner -> "Inner screen"
+            Kind.Single -> "Screen"
+        }
+    }
 
     data class State(
+        val screen: Screen,
         /** Density now in force. */
         val densityDpi: Int,
-        /** The screen's own density, what Reset goes back to. */
-        val defaultDpi: Int,
         val shortSidePx: Int,
     ) {
         val smallestWidthDp: Int get() = dpFor(densityDpi)
-        val defaultWidthDp: Int get() = dpFor(defaultDpi)
-        val isDefault: Boolean get() = densityDpi == defaultDpi
 
-        fun dpFor(dpi: Int): Int = (shortSidePx * 160f / dpi).roundToInt()
-        fun dpiFor(dp: Int): Int = (shortSidePx * 160f / dp).roundToInt()
+        fun dpFor(dpi: Int): Int = shortSidePx * 160 / dpi
+        fun dpiFor(dp: Int): Int = shortSidePx * 160 / dp
 
         /** A preset counts as applied when its density is the one in force. */
         fun matches(preset: Preset): Boolean = dpiFor(preset.widthDp) == densityDpi
@@ -56,6 +67,20 @@ object DisplaySize {
 
     private val userId: Int get() = Process.myUserHandle().hashCode()
 
+    private fun screenOf(context: Context, display: Display): Screen {
+        val mode = display.mode
+        val w = minOf(mode.physicalWidth, mode.physicalHeight)
+        val h = maxOf(mode.physicalWidth, mode.physicalHeight)
+        val foldable = context.packageManager.hasSystemFeature(PackageManager.FEATURE_SENSOR_HINGE_ANGLE)
+        // A foldable's inner screen is near square (Find N6 2248×2480), the cover tall (1140×2616).
+        val kind = when {
+            !foldable -> Screen.Kind.Single
+            h.toFloat() / w < 1.5f -> Screen.Kind.Inner
+            else -> Screen.Kind.Cover
+        }
+        return Screen("${w}x$h", kind)
+    }
+
     fun read(context: Context): State? {
         val display =
             context.getSystemService(DisplayManager::class.java).getDisplay(Display.DEFAULT_DISPLAY) ?: return null
@@ -64,8 +89,7 @@ object DisplaySize {
         display.getRealSize(size)
         return runCatching {
             val base = call("getBaseDisplayDensity", Display.DEFAULT_DISPLAY) as Int
-            val initial = call("getInitialDisplayDensity", Display.DEFAULT_DISPLAY) as Int
-            if (base <= 0 || initial <= 0) null else State(base, initial, minOf(size.x, size.y))
+            if (base <= 0) null else State(screenOf(context, display), base, minOf(size.x, size.y))
         }.getOrNull()
     }
 
@@ -75,7 +99,4 @@ object DisplaySize {
         val dpi = state.dpiFor(widthDp.coerceIn(MIN_DP, MAX_DP))
         return runCatching { call("setForcedDisplayDensityForUser", Display.DEFAULT_DISPLAY, dpi, userId) }.isSuccess
     }
-
-    fun reset(): Boolean =
-        runCatching { call("clearForcedDisplayDensityForUser", Display.DEFAULT_DISPLAY, userId) }.isSuccess
 }

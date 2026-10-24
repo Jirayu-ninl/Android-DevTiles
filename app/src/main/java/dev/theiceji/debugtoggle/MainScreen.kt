@@ -94,11 +94,13 @@ private fun rememberGlobalSettingsVersion(): Int {
 fun MainScreen() {
     val context = LocalContext.current
     val settingsVersion = rememberGlobalSettingsVersion()
-    // The activity handles density changes itself, so a new density arrives here as a new configuration.
-    val densityDpi = LocalConfiguration.current.densityDpi
+    // The activity handles density and screen changes itself (a new density, folding or unfolding),
+    // so they arrive here as a new configuration.
+    val config = LocalConfiguration.current
     val granted = remember(settingsVersion) { DebugSettings.hasPermission(context) }
-    val display = remember(densityDpi, settingsVersion) { DisplaySize.read(context) }
-    var presets by remember { mutableStateOf(Presets.load(context)) }
+    val display = remember(config.densityDpi, config.screenWidthDp, config.screenHeightDp, settingsVersion) {
+        DisplaySize.read(context)
+    }
 
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surfaceContainerLowest) {
         Column(
@@ -111,14 +113,7 @@ fun MainScreen() {
             Header()
             AnimatedVisibility(!granted) { PermissionCard() }
             DebugCard(settingsVersion)
-            DisplayCard(
-                state = display,
-                presets = presets,
-                onPresetsChange = {
-                    presets = it
-                    Presets.save(context, it)
-                },
-            )
+            DisplayCard(display)
             TilesCard()
             Spacer(Modifier.height(8.dp))
         }
@@ -262,9 +257,18 @@ private fun Badge(@DrawableRes icon: Int, emphasized: Boolean) {
 private data class Editing(val index: Int, val preset: Preset)
 
 @Composable
-private fun DisplayCard(state: DisplaySize.State?, presets: List<Preset>, onPresetsChange: (List<Preset>) -> Unit) {
+private fun DisplayCard(state: DisplaySize.State?) {
     val context = LocalContext.current
     var editing by remember { mutableStateOf<Editing?>(null) }
+    // Each screen (cover, inner) has its own presets; folding swaps them.
+    var screen by remember(state?.screen) { mutableStateOf(state?.let { Presets.load(context, it.screen) }) }
+    fun update(value: ScreenPresets) {
+        screen = value
+        if (state != null) Presets.save(context, state.screen, value)
+    }
+    fun apply(dp: Int) {
+        if (!DisplaySize.apply(context, dp)) noPermission(context)
+    }
 
     Surface(shape = CardShape, color = MaterialTheme.colorScheme.surfaceContainer) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -275,22 +279,24 @@ private fun DisplayCard(state: DisplaySize.State?, presets: List<Preset>, onPres
                     Text("Display size", style = MaterialTheme.typography.titleLarge)
                     Text(
                         when {
-                            state == null -> "Not available on this device"
-                            state.isDefault -> "Default size"
-                            else -> "Default is ${state.defaultWidthDp} dp"
+                            state == null || screen == null -> "Not available on this device"
+                            else -> "${state.screen.label} · default ${screen!!.default.widthDp} dp"
                         },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                if (state != null && !state.isDefault) {
-                    IconButton(onClick = { if (!DisplaySize.reset()) noPermission(context) }) {
-                        Icon(painterResource(R.drawable.ic_restart), "Reset to default size")
+                val current = screen
+                if (state != null && current != null && !state.matches(current.default)) {
+                    IconButton(onClick = { apply(current.default.widthDp) }) {
+                        Icon(painterResource(R.drawable.ic_restart), "Back to the default size")
                     }
                 }
             }
 
-            if (state != null) {
+            val current = screen
+            if (state != null && current != null) {
+                val presets = current.presets
                 Row(verticalAlignment = Alignment.Bottom) {
                     Text(
                         "${state.smallestWidthDp}",
@@ -317,8 +323,9 @@ private fun DisplayCard(state: DisplaySize.State?, presets: List<Preset>, onPres
                         PresetTile(
                             preset = preset,
                             selected = state.matches(preset),
+                            isDefault = i == current.defaultIndex,
                             modifier = Modifier.weight(1f),
-                            onClick = { if (!DisplaySize.apply(context, preset.widthDp)) noPermission(context) },
+                            onClick = { apply(preset.widthDp) },
                             onLongClick = { editing = Editing(i, preset) },
                         )
                     }
@@ -336,20 +343,23 @@ private fun DisplayCard(state: DisplaySize.State?, presets: List<Preset>, onPres
     }
 
     val edit = editing
-    if (edit != null && state != null) {
+    val current = screen
+    if (edit != null && state != null && current != null) {
         PresetDialog(
             initial = edit.preset,
+            isNew = edit.index < 0,
+            initialDefault = edit.index == current.defaultIndex,
             state = state,
-            canDelete = edit.index >= 0 && presets.size > 1,
+            canDelete = edit.index >= 0 && current.presets.size > 1,
             onDismiss = { editing = null },
-            onSave = { saved ->
-                onPresetsChange(
-                    if (edit.index < 0) presets + saved else presets.toMutableList().also { it[edit.index] = saved },
-                )
+            onSave = { saved, makeDefault ->
+                val next = if (edit.index < 0) current.add(saved) else current.replace(edit.index, saved)
+                val index = if (edit.index < 0) next.presets.lastIndex else edit.index
+                update(if (makeDefault) next.copy(defaultIndex = index) else next)
                 editing = null
             },
             onDelete = {
-                onPresetsChange(presets.filterIndexed { i, _ -> i != edit.index })
+                update(current.remove(edit.index))
                 editing = null
             },
         )
@@ -372,6 +382,7 @@ private fun Preset.Kind.icon() =
 private fun PresetTile(
     preset: Preset,
     selected: Boolean,
+    isDefault: Boolean,
     modifier: Modifier,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
@@ -396,7 +407,13 @@ private fun PresetTile(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        Text("${preset.widthDp} dp", style = MaterialTheme.typography.labelMedium, color = fg.copy(alpha = 0.7f))
+        Text(
+            if (isDefault) "${preset.widthDp} dp · default" else "${preset.widthDp} dp",
+            style = MaterialTheme.typography.labelMedium,
+            color = fg.copy(alpha = 0.7f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
@@ -418,17 +435,23 @@ private fun AddTile(onClick: () -> Unit) {
 @Composable
 private fun PresetDialog(
     initial: Preset,
+    isNew: Boolean,
+    initialDefault: Boolean,
     state: DisplaySize.State,
     canDelete: Boolean,
     onDismiss: () -> Unit,
-    onSave: (Preset) -> Unit,
+    onSave: (Preset, makeDefault: Boolean) -> Unit,
     onDelete: () -> Unit,
 ) {
     var name by remember { mutableStateOf(initial.name) }
     var dp by remember { mutableIntStateOf(initial.widthDp.coerceIn(DisplaySize.MIN_DP, DisplaySize.MAX_DP)) }
+    var makeDefault by remember { mutableStateOf(initialDefault) }
+    fun step(by: Int) {
+        dp = (dp + by).coerceIn(DisplaySize.MIN_DP, DisplaySize.MAX_DP)
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (canDelete || initial.name != "Custom") "Edit preset" else "New preset") },
+        title = { Text(if (isNew) "New preset · ${state.screen.label}" else "Edit preset · ${state.screen.label}") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 OutlinedTextField(
@@ -449,15 +472,20 @@ private fun PresetDialog(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                Slider(
-                    value = dp.toFloat(),
-                    onValueChange = { dp = it.roundToInt() },
-                    valueRange = DisplaySize.MIN_DP.toFloat()..DisplaySize.MAX_DP.toFloat(),
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf(360, 411, 600, 840).forEach { v ->
-                        TextButton(onClick = { dp = v }, contentPadding = PaddingValues(horizontal = 8.dp)) { Text("$v") }
-                    }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(onClick = { step(-1) }, contentPadding = PaddingValues(0.dp)) { Text("−1", maxLines = 1) }
+                    Slider(
+                        value = dp.toFloat(),
+                        onValueChange = { dp = it.roundToInt() },
+                        valueRange = DisplaySize.MIN_DP.toFloat()..DisplaySize.MAX_DP.toFloat(),
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = { step(1) }, contentPadding = PaddingValues(0.dp)) { Text("+1", maxLines = 1) }
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Default for the ${state.screen.label.lowercase()}", Modifier.weight(1f))
+                    // The default can only move to another preset, never be left without one.
+                    Switch(checked = makeDefault, onCheckedChange = { makeDefault = it }, enabled = !initialDefault)
                 }
                 Text(
                     "Under 600 dp is a phone layout, 600–839 tablet, 840 and up desktop-class.",
@@ -467,7 +495,7 @@ private fun PresetDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { onSave(Preset(name.trim().ifEmpty { "$dp dp" }, dp)) }) { Text("Save") }
+            TextButton(onClick = { onSave(Preset(name.trim().ifEmpty { "$dp dp" }, dp), makeDefault) }) { Text("Save") }
         },
         dismissButton = {
             Row {

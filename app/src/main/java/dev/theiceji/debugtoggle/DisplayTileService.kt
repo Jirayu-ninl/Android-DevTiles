@@ -5,7 +5,7 @@ import android.content.Intent
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 
-/** Tap to step through the display size presets (then back to the default size). */
+/** Tap to step through the current screen's display size presets. */
 class DisplayTileService : TileService() {
     override fun onStartListening() = refresh()
 
@@ -15,27 +15,23 @@ class DisplayTileService : TileService() {
             openApp()
             return
         }
-        val next = Presets.next(Presets.load(this), state)
-        val ok = if (next == null) DisplaySize.reset() else DisplaySize.apply(this, next.widthDp)
-        if (!ok) openApp()
+        val next = Presets.load(this, state.screen).next(state)
+        if (!DisplaySize.apply(this, next.widthDp)) openApp()
         refresh()
     }
 
     private fun refresh() {
         val tile = qsTile ?: return
         val state = DisplaySize.read(this)
-        tile.state = if (state == null || state.isDefault) Tile.STATE_INACTIVE else Tile.STATE_ACTIVE
+        val screen = state?.let { Presets.load(this, it.screen) }
+        tile.state = if (state == null || screen == null || state.matches(screen.default)) Tile.STATE_INACTIVE else Tile.STATE_ACTIVE
         tile.subtitle =
             when {
                 !DebugSettings.hasPermission(this) -> "Needs permission"
-                state == null -> "Unavailable"
+                state == null || screen == null -> "Unavailable"
                 else -> {
-                    val preset = Presets.load(this).firstOrNull { state.matches(it) }
-                    when {
-                        preset != null -> "${preset.name} · ${preset.widthDp} dp"
-                        state.isDefault -> "Default · ${state.smallestWidthDp} dp"
-                        else -> "${state.smallestWidthDp} dp"
-                    }
+                    val preset = screen.presets.firstOrNull { state.matches(it) }
+                    if (preset != null) "${preset.name} · ${preset.widthDp} dp" else "${state.smallestWidthDp} dp"
                 }
             }
         tile.updateTile()

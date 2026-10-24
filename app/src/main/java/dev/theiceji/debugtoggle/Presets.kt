@@ -16,40 +16,67 @@ data class Preset(val name: String, val widthDp: Int) {
     enum class Kind { Phone, Tablet, Desktop }
 }
 
-/** The display size presets, in the order the tile cycles through them. */
+/** One screen's presets, in the order the tile cycles through them; [defaultIndex] is what Reset goes back to. */
+data class ScreenPresets(val presets: List<Preset>, val defaultIndex: Int) {
+    val default: Preset get() = presets[defaultIndex]
+
+    fun replace(index: Int, preset: Preset) = copy(presets = presets.toMutableList().also { it[index] = preset })
+
+    fun add(preset: Preset) = copy(presets = presets + preset)
+
+    fun remove(index: Int): ScreenPresets {
+        val left = presets.filterIndexed { i, _ -> i != index }
+        val default = when {
+            index == defaultIndex -> 0
+            index < defaultIndex -> defaultIndex - 1
+            else -> defaultIndex
+        }
+        return ScreenPresets(left, default)
+    }
+
+    /** What the tile switches to: the preset after the one in force; from a size no preset has, the default. */
+    fun next(state: DisplaySize.State): Preset {
+        val current = presets.indexOfFirst { state.matches(it) }
+        return if (current < 0) default else presets[(current + 1) % presets.size]
+    }
+}
+
+/** Display size presets, kept per screen (a foldable's cover and inner screens each have their own). */
 object Presets {
     const val MAX = 5
     private const val PREFS = "presets"
-    private const val KEY = "list"
-
-    val defaults = listOf(Preset("Mobile", 411), Preset("Tablet", 600), Preset("Desktop", 840))
-
-    fun load(context: Context): List<Preset> {
-        val json = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY, null) ?: return defaults
-        return runCatching {
-            val array = JSONArray(json)
-            List(array.length()) { i ->
-                val o = array.getJSONObject(i)
-                Preset(o.getString("name"), o.getInt("dp"))
-            }
-        }.getOrDefault(defaults)
-    }
-
-    fun save(context: Context, presets: List<Preset>) {
-        val array = JSONArray()
-        presets.forEach { array.put(JSONObject().put("name", it.name).put("dp", it.widthDp)) }
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY, array.toString()).apply()
-    }
 
     /**
-     * What the tile switches to: the preset after the one in force, then the screen's default size
-     * (null) after the last one, unless a preset already is the default. From a custom size, the first.
+     * First-run presets. The Find N6 runs both screens at 442 dpi: 412 dp on the cover, 813 dp inside.
+     * Inside, Desktop is the cover's 412 dp at the same physical size (442 dpi × 423/445 ppi ≈ 420 dpi),
+     * which is also the first size past 840 dp, where apps switch to expanded layouts; Wide is the
+     * 1024 dp desktop width, things about 80 % of their cover size.
      */
-    fun next(presets: List<Preset>, state: DisplaySize.State): Preset? {
-        val cycle: List<Preset?> = if (presets.any { state.dpiFor(it.widthDp) == state.defaultDpi }) presets else presets + null
-        if (cycle.isEmpty()) return null
-        val current =
-            if (state.isDefault && null in cycle) cycle.indexOf(null) else cycle.indexOfFirst { it != null && state.matches(it) }
-        return cycle[(current + 1) % cycle.size]
+    private fun defaults(screen: DisplaySize.Screen) =
+        if (screen.kind == DisplaySize.Screen.Kind.Inner) {
+            ScreenPresets(listOf(Preset("Default", 813), Preset("Desktop", 856), Preset("Wide", 1024)), 0)
+        } else {
+            ScreenPresets(listOf(Preset("Mobile", 412), Preset("Tablet", 600), Preset("Desktop", 840)), 0)
+        }
+
+    fun load(context: Context, screen: DisplaySize.Screen): ScreenPresets {
+        val json = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(screen.key, null)
+            ?: return defaults(screen)
+        return runCatching {
+            val o = JSONObject(json)
+            val array = o.getJSONArray("list")
+            val presets = List(array.length()) { i ->
+                val p = array.getJSONObject(i)
+                Preset(p.getString("name"), p.getInt("dp"))
+            }
+            ScreenPresets(presets, o.getInt("default").coerceIn(presets.indices))
+        }.getOrDefault(defaults(screen))
+    }
+
+    fun save(context: Context, screen: DisplaySize.Screen, value: ScreenPresets) {
+        val array = JSONArray()
+        value.presets.forEach { array.put(JSONObject().put("name", it.name).put("dp", it.widthDp)) }
+        val json = JSONObject().put("default", value.defaultIndex).put("list", array).toString()
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(screen.key, json).apply()
     }
 }
