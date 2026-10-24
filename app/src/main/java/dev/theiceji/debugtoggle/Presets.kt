@@ -48,13 +48,12 @@ object Presets {
 
     /**
      * First-run presets. The Find N6 runs both screens at 442 dpi: 412 dp on the cover, 813 dp inside.
-     * Inside, Desktop is the cover's 412 dp at the same physical size (442 dpi × 423/445 ppi ≈ 420 dpi),
-     * which is also the first size past 840 dp, where apps switch to expanded layouts; Wide is the
-     * 1024 dp desktop width, things about 80 % of their cover size.
+     * The inner presets take the cover's steps at the same scale, i.e. the same density: Tablet 600 dp
+     * is 304 dpi (×1.45 denser), Desktop 840 dp is 217 dpi (×2.04), which inside is 1183 and 1657 dp.
      */
     private fun defaults(screen: DisplaySize.Screen) =
         if (screen.kind == DisplaySize.Screen.Kind.Inner) {
-            ScreenPresets(listOf(Preset("Default", 813), Preset("Desktop", 856), Preset("Wide", 1024)), 0)
+            ScreenPresets(listOf(Preset("Default", 813), Preset("Dense", 1183), Preset("Densest", 1657)), 0)
         } else {
             ScreenPresets(listOf(Preset("Mobile", 412), Preset("Tablet", 600), Preset("Desktop", 840)), 0)
         }

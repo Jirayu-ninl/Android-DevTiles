@@ -24,7 +24,7 @@ import org.lsposed.hiddenapibypass.HiddenApiBypass
  */
 object DisplaySize {
     const val MIN_DP = 320
-    const val MAX_DP = 1400
+    const val MAX_DP = 2000
 
     /** The physical screen behind the default display, keyed by its panel resolution. */
     data class Screen(val key: String, val kind: Kind) {

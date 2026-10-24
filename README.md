@@ -12,10 +12,9 @@ Personal-use Android app (not for Play) with two Quick Settings tiles:
    (on the Find N6, 412 dp on the cover and 813 dp inside are both 442 dpi).
    - **Per screen.** Android keeps a forced density per physical screen, so a foldable's cover and inner screens each
      have their own presets and default (the screen is told apart by its panel resolution; near square = inner).
-     First-run presets: cover Mobile 412 (default) / Tablet 600 / Desktop 840; inner Default 813 / Desktop 856 /
-     Wide 1024. Desktop 856 is the cover's 412 dp at the same physical size (442 dpi × 423/445 ppi ≈ 420 dpi) and the
-     first size past 840 dp, where apps use expanded layouts; Wide 1024 (351 dpi) shows things at about 80 % of their
-     cover size.
+     First-run presets: cover Mobile 412 (default) / Tablet 600 / Desktop 840; inner Default 813 / Dense 1183 /
+     Densest 1657. The inner ones are the cover's steps at the same scale, so the same density on both screens:
+     442 dpi (default), 304 dpi (×1.45), 217 dpi (×2.04).
    - In the app: tap a preset to apply it, long-press to edit (name, dp, default for this screen), up to 5 per screen;
      the reset button goes back to the screen's default preset. The tile goes to the next preset, or to the default
      from a size no preset has.
@@ -44,8 +43,8 @@ export JAVA_HOME="/c/Program Files/Android/Android Studio/jbr"
 ./gradlew assembleRelease assembleBenchmark assembleDebug
 ```
 
-Every assemble copies its APK to `build/<versionName>/` at the project root (`debugtoggle-0.2.1-release.apk`, `-benchmark`,
-`-debug`), and release also its R8 mapping (`debugtoggle-0.2.1-mapping.txt`). Bump `versionName` and `versionCode` for a
+Every assemble copies its APK to `build/<versionName>/` at the project root (`debugtoggle-0.2.2-release.apk`, `-benchmark`,
+`-debug`), and release also its R8 mapping (`debugtoggle-0.2.2-mapping.txt`). Bump `versionName` and `versionCode` for a
 new version, or the last one is overwritten. Gradle's own root-project output goes to `.gradle/root-build` so `build/`
 only holds versions.
 
