@@ -9,7 +9,7 @@
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
-        android:theme="@style/Theme.DebugToggle">
+        android:theme="@style/Theme.DevTiles">
 
         <!-- Handles density changes itself, so switching display size re-lays the screen in place. -->
         <activity

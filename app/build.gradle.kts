@@ -5,10 +5,10 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
-// Release signing lives outside the repo: ~/.keystores/debugtoggle-release.properties names the
+// Release signing lives outside the repo: ~/.keystores/devtiles-release.properties names the
 // .jks next to it (storeFile, storePassword, keyAlias, keyPassword). Without it release is unsigned.
 val signingProps =
-    File(System.getProperty("user.home"), ".keystores/debugtoggle-release.properties")
+    File(System.getProperty("user.home"), ".keystores/devtiles-release.properties")
         .takeIf { it.isFile }
         ?.let { f -> Properties().apply { f.inputStream().use { load(it) } } to f.parentFile }
 
@@ -22,8 +22,8 @@ android {
         applicationId = "dev.theiceji.debugtoggle"
         minSdk = 34
         targetSdk = 36
-        versionCode = 4
-        versionName = "0.2.2"
+        versionCode = 5
+        versionName = "0.3.0"
     }
 
     signingConfigs {
@@ -71,15 +71,15 @@ kotlin {
 }
 
 // Every assemble of debug, release or benchmark also copies its APK to build/<versionName>/ at the
-// project root (debugtoggle-0.2.0-release.apk), and release its R8 mapping
-// (debugtoggle-0.2.0-mapping.txt). Bump versionName for a new version, or the last one is overwritten.
+// project root (devtiles-0.3.0-release.apk), and release its R8 mapping
+// (devtiles-0.3.0-mapping.txt). Bump versionName for a new version, or the last one is overwritten.
 androidComponents {
     onVariants { variant ->
         val name = variant.name.replaceFirstChar { it.uppercase() }
         val version = android.defaultConfig.versionName ?: "unversioned"
         // Plain strings: the rename lambda is stored in the configuration cache, the variant can't be.
-        val apkName = "debugtoggle-$version-${variant.name}.apk"
-        val mappingName = "debugtoggle-$version-mapping.txt"
+        val apkName = "devtiles-$version-${variant.name}.apk"
+        val mappingName = "devtiles-$version-mapping.txt"
         val export =
             tasks.register<Copy>("export${name}Apk") {
                 from(variant.artifacts.get(com.android.build.api.artifact.SingleArtifact.APK)) { include("*.apk") }

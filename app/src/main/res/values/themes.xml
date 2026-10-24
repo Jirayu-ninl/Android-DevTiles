@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Compose draws everything; the window only needs the right background before the first frame. -->
-    <style name="Theme.DebugToggle" parent="android:Theme.Material.Light.NoActionBar">
+    <style name="Theme.DevTiles" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:windowBackground">@android:color/system_neutral1_10</item>
     </style>
 </resources>

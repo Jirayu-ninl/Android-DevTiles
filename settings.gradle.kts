@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "DebugToggle"
+rootProject.name = "DevTiles"
 include(":app")

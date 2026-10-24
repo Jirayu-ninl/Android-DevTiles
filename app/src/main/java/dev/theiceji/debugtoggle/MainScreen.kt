@@ -124,7 +124,7 @@ fun MainScreen() {
 private fun Header() {
     Column(Modifier.padding(start = 4.dp, top = 24.dp, bottom = 4.dp)) {
         Text(
-            "Debug Toggle",
+            "DevTiles",
             style = MaterialTheme.typography.displaySmall,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurface,
@@ -407,12 +407,14 @@ private fun PresetTile(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
+        Text("${preset.widthDp} dp", style = MaterialTheme.typography.labelMedium, color = fg.copy(alpha = 0.7f))
+        // Every tile keeps the line so they stay the same height; only the default fills it.
         Text(
-            if (isDefault) "${preset.widthDp} dp · default" else "${preset.widthDp} dp",
-            style = MaterialTheme.typography.labelMedium,
-            color = fg.copy(alpha = 0.7f),
+            if (isDefault) "default" else "",
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = fg.copy(alpha = 0.85f),
             maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
         )
     }
 }

@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" width="192" height="192">
+  <!-- The launcher icon (app/src/main/res/drawable/ic_launcher_*.xml) in a rounded-square mask. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="108" y2="108" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#3324D6"/>
+      <stop offset="1" stop-color="#9B3CF2"/>
+    </linearGradient>
+    <radialGradient id="light" cx="28" cy="22" r="72" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <clipPath id="mask"><rect x="9" y="9" width="90" height="90" rx="24"/></clipPath>
+  </defs>
+  <g clip-path="url(#mask)">
+    <rect width="108" height="108" fill="url(#bg)"/>
+    <rect width="108" height="108" fill="url(#light)"/>
+    <path d="M41,40H67A14,14 0 0 1 67,68H41A14,14 0 0 1 41,40Z" fill="#FFFFFF" fill-opacity="0.24"/>
+    <circle cx="34.2" cy="54" r="1.8" fill="#FFFFFF"/>
+    <circle cx="40.6" cy="54" r="2.4" fill="#FFFFFF"/>
+    <circle cx="48" cy="54" r="3" fill="#FFFFFF"/>
+    <circle cx="67" cy="55.6" r="11.4" fill="#000000" fill-opacity="0.16"/>
+    <circle cx="67" cy="54" r="11" fill="#FFFFFF"/>
+    <path d="M63.4,50.2L59.8,54L63.4,57.8M70.6,50.2L74.2,54L70.6,57.8" fill="none" stroke="#5A2EE6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Debug Toggle</string>
+    <string name="app_name">DevTiles</string>
     <string name="tile_label">USB debugging</string>
     <string name="display_tile_label">Display size</string>
 </resources>

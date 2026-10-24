@@ -4,3 +4,7 @@ local.properties
 .idea/
 *.iml
 .kotlin/
+# Signing material never goes in the repo (release reads ~/.keystores/devtiles-release.properties).
+*.jks
+*.keystore
+keystore.properties
