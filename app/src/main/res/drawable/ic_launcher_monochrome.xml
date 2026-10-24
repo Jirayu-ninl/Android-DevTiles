@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Themed icon: the launcher tints it, so shapes differ by alpha only. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FF000000"
+        android:fillAlpha="0.35"
+        android:pathData="M41,40H67A14,14 0,0 1,67 68H41A14,14 0,0 1,41 40Z" />
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M34.2,54m-1.8,0a1.8,1.8 0,1 1,3.6 0a1.8,1.8 0,1 1,-3.6 0M40.6,54m-2.4,0a2.4,2.4 0,1 1,4.8 0a2.4,2.4 0,1 1,-4.8 0M48,54m-3,0a3,3 0,1 1,6 0a3,3 0,1 1,-6 0" />
+    <!-- Knob with the </> cut out (even-odd). -->
+    <path
+        android:fillColor="#FF000000"
+        android:fillType="evenOdd"
+        android:pathData="M67,54m-11,0a11,11 0,1 1,22 0a11,11 0,1 1,-22 0ZM62.6,49.45L58.3,54L62.6,58.55L64.2,57.05L61.3,54L64.2,50.95ZM71.4,49.45L69.8,50.95L72.7,54L69.8,57.05L71.4,58.55L75.7,54Z" />
+</vector>

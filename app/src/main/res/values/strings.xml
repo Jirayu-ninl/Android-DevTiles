@@ -2,4 +2,5 @@
 <resources>
     <string name="app_name">Debug Toggle</string>
     <string name="tile_label">USB debugging</string>
+    <string name="display_tile_label">Display size</string>
 </resources>
